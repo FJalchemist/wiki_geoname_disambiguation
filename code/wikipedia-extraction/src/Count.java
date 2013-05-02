@@ -16,7 +16,13 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-
+/**
+ * @deprecated: already solved the degree distribution problem by one unix command, 
+ * Hadoop is useless... 
+ * 
+ * @author yibinl
+ *
+ */
 public class Count {
 	public static class CountMapper extends 
 			Mapper<LongWritable,Text,LongWritable,IntWritable> {

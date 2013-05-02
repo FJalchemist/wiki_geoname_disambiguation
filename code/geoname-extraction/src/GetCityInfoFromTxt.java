@@ -241,6 +241,10 @@ public class GetCityInfoFromTxt {
 		HashMap<Integer, Integer> dist = new HashMap<Integer, Integer>();
 		for (String alter : aliasGn.keySet()) {
 			int ambiguousCnt = aliasGn.get(alter).size();
+			if(ambiguousCnt > 3000)
+			{
+				System.err.println("entered: " + alter);
+			}
 			if (dist.containsKey(ambiguousCnt)) {
 				dist.put(ambiguousCnt, (dist.get(ambiguousCnt) + 1));
 			} else {
@@ -260,7 +264,7 @@ public class GetCityInfoFromTxt {
 		}
 		HashMap<Integer, Integer> dist = calculateDistributionOfCities(aliasGn);
 		for (Integer amCnt : dist.keySet()) {
-			System.out.format("Ambiguous cities: %d; count: %d\n", amCnt,
+			System.out.format("%d\t%d\n", amCnt,
 					dist.get(amCnt));
 		}
 	}

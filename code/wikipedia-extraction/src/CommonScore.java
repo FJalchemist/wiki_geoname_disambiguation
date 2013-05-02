@@ -49,10 +49,10 @@ public class CommonScore {
 			    	String [] linkParts = link.split("\\|");
 			    	if (linkParts.length == 1) {
 					
-						context.write(new Text(linkParts[0]), new Text(linkParts[0]));
+						context.write(new Text(linkParts[0]), new Text(linkParts[0] + "|,,,,,|" + 1));
 					} else if (linkParts.length == 2 ) {
 					
-						context.write(new Text(linkParts[1]), new Text(linkParts[0]));
+						context.write(new Text(linkParts[1]), new Text(linkParts[0] + "|,,,,,|" + 1));
 					} else {
 						System.out.print("?? linkParts: " + linkParts.length + "  " + link);
 					}
@@ -61,7 +61,7 @@ public class CommonScore {
 			        
 			    }
 			    if (linkNum != 0) {
-			    	System.err.println("article right is wrong ..." + linkNum + " " + article);
+			    	System.err.println(key.get() + ": article right is wrong ..." + linkNum + " " + article);
 				}
 			}
 		}
@@ -73,18 +73,30 @@ public class CommonScore {
 				throws IOException, InterruptedException {
 			HashMap<String, Long> map = new HashMap<String, Long>();
 			for (Text value: values) {
-				String linkTarget = value.toString();
+				String[] linkCnt = value.toString().split("\\|,,,,,\\|");
+				if (linkCnt.length > 2)
+				{
+					System.out.println("Warning: linkCount length > 2");
+					continue;
+				}
+				String linkTarget = linkCnt[0];
+				long count = Long.parseLong(linkCnt[1]);
 				Long orgCounts = map.get(linkTarget);
 				if (orgCounts == null) {
-					orgCounts = new Long(1);
+					orgCounts = count;
 				} else {
-					orgCounts += 1;
+					orgCounts += count;
 				}
 				map.put(linkTarget, orgCounts);
 			}
 			
 			for (Entry<String, Long> entry : map.entrySet()) {
 				context.write(key, new Text(entry.getKey() + "|,,,,,|" + entry.getValue()));
+				//String s = entry.getKey() + "|,,,,,|" + entry.getValue();
+				//if (s.split("\\|,,,,,\\|").length > 2)
+				//{
+				//	System.out.println("!!!!: " + s);
+				//}
 			}
 		 }
 	}  // Combiner
@@ -98,6 +110,11 @@ public class CommonScore {
 			HashMap<String, Long> map = new HashMap<String, Long>();
 			for (Text value: values) {
 				String [] p = value.toString().split("\\|,,,,,\\|");
+				if (p.length != 2)
+				{
+					System.out.println(value.toString());
+					continue;
+				}
 				// TODO: check p's lenght should be 2
 				String linkTarget = p[0];
 				Long newCounts = null;
@@ -113,7 +130,7 @@ public class CommonScore {
 				} else {
 					orgCounts += newCounts;
 				}
-				map.put(linkTarget, newCounts);
+				map.put(linkTarget, orgCounts);
 				totalNum += newCounts;			
 			}
 			//System.out.println(key.toString() + " " + totalNum);
