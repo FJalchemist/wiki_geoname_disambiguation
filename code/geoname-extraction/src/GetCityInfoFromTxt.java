@@ -1,7 +1,11 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -9,6 +13,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * extract geoname from text file like cities1000.txt
@@ -253,20 +259,68 @@ public class GetCityInfoFromTxt {
 		}
 		return dist;
 	}
+	
+	private static void filterCityMention(String filename, HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output)
+	{
+		BufferedReader br = null;
+		BufferedWriter out = null;
+		
+		try {
+ 
+			String article;
+ 
+			br = new BufferedReader(new FileReader(filename));
+			out = new BufferedWriter(new FileWriter(output));
+			int cnt = 0;
+ 
+			while ((article = br.readLine()) != null) {
+				cnt++;
+				String [] parts = article.split("\t");
+				Pattern pattern = Pattern.compile("\\[(.+?)\\]");
+			    Matcher matcher = pattern.matcher(article);
+			    while (matcher.find()) {
+			    	String link = matcher.group(1);
+			    	String [] linkParts = link.split("\\|");
+			    	if (linkParts.length == 1) {
+			    		if(aliasGn.containsKey(linkParts[0]))
+			    		{
+			    			out.write(article + "\n");
+			    			break;
+			    		}
+			    	}
+			    	else if(linkParts.length == 2)
+			    	{
+			    		if(aliasGn.containsKey(linkParts[1]))
+			    		{
+			    			out.write(article + "\n");
+			    			break;
+			    		}
+			    	}
+			    	else{
+			    		System.err.format("parse error: line %d. Line info: %s.\n", cnt, article);
+			    	}
+			    }
+			}
+ 
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)br.close();
+				if (out != null)out.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
 
 	public static void main(String[] args) {
+		String input = args[0];
+		String output = args[1];
+		System.out.println(input + ", " + output);
 		HashMap<Integer, GeoName> idGn = getCityByIdMapping("input/cities1000.txt");
 		HashMap<String, LinkedList<SimpleGeoName>> aliasGn = getCityByAlternativeNameMapping("input/cities1000.txt");
-		LinkedList<SimpleGeoName> ambiguous = aliasGn.get("New York");
-		for (SimpleGeoName sgn : ambiguous) {
-			System.out.format("New York's aliases: %s\n",
-					idGn.get(sgn.geoNameId).country);
-		}
-		HashMap<Integer, Integer> dist = calculateDistributionOfCities(aliasGn);
-		for (Integer amCnt : dist.keySet()) {
-			System.out.format("%d\t%d\n", amCnt,
-					dist.get(amCnt));
-		}
+		filterCityMention(input, aliasGn, output);
 	}
 
 }
