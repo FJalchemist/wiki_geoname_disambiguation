@@ -51,8 +51,7 @@ public class GetCityInfoFromTxt {
 				// }
 
 				GeoName gn = getGeoNameFromTxt(str);
-				if (gn != null)
-				{
+				if (gn != null) {
 					map.put(gn.geoNameId, gn);
 				}
 			}
@@ -94,9 +93,9 @@ public class GetCityInfoFromTxt {
 
 				str = str.replaceAll("(\\r|\\n)", "");
 
-//				if (cnt < 100) {
-//					System.out.println(str);
-//				}
+				// if (cnt < 100) {
+				// System.out.println(str);
+				// }
 
 				SimpleGeoName gn = getSimpleGeoNameFromTxt(str);
 
@@ -171,17 +170,15 @@ public class GetCityInfoFromTxt {
 				int gtopo30 = -100;
 				String timezone = "";
 				String modification_date = "";
-				
-				
+
 				geonameid = Integer.parseInt(columns[0]);
 				name = columns[1];
 				ansiname = columns[2];
-				alternatenames = new ArrayList<String>(
-						Arrays.asList(columns[3].split(",")));
+				alternatenames = new ArrayList<String>(Arrays.asList(columns[3]
+						.split(",")));
 				latitude = Double.parseDouble(columns[4]);
 				longitude = Double.parseDouble(columns[5]);
-				feature_class = FeatureClass
-						.convertToEnum(columns[6]);
+				feature_class = FeatureClass.convertToEnum(columns[6]);
 				feature_code = columns[7];
 				country_code = columns[8];
 				cc2 = columns[9];
@@ -202,8 +199,7 @@ public class GetCityInfoFromTxt {
 						gtopo30, timezone, modification_date);
 			} catch (NullPointerException npe) {
 				;
-			}
-			catch (NumberFormatException nfe) {
+			} catch (NumberFormatException nfe) {
 				;
 			}
 		}
@@ -247,8 +243,7 @@ public class GetCityInfoFromTxt {
 		HashMap<Integer, Integer> dist = new HashMap<Integer, Integer>();
 		for (String alter : aliasGn.keySet()) {
 			int ambiguousCnt = aliasGn.get(alter).size();
-			if(ambiguousCnt > 3000)
-			{
+			if (ambiguousCnt > 3000) {
 				System.err.println("entered: " + alter);
 			}
 			if (dist.containsKey(ambiguousCnt)) {
@@ -260,59 +255,272 @@ public class GetCityInfoFromTxt {
 		return dist;
 	}
 	
-	private static void filterCityMention(String filename, HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output)
-	{
+	/**
+	 * filter the common score table (H3 by our definition.
+	 * @param filename
+	 * @param aliasGn
+	 * @param output
+	 */
+	private static void filterCommonScoreH3(String filename,
+			HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output) {
 		BufferedReader br = null;
 		BufferedWriter out = null;
-		
+
 		try {
- 
-			String article;
- 
+
+			String anchorEntry;
+
 			br = new BufferedReader(new FileReader(filename));
 			out = new BufferedWriter(new FileWriter(output));
-			int cnt = 0;
- 
-			while ((article = br.readLine()) != null) {
-				cnt++;
-				String [] parts = article.split("\t");
-				Pattern pattern = Pattern.compile("\\[(.+?)\\]");
-			    Matcher matcher = pattern.matcher(article);
-			    while (matcher.find()) {
-			    	String link = matcher.group(1);
-			    	String [] linkParts = link.split("\\|");
-			    	if (linkParts.length == 1) {
-			    		if(aliasGn.containsKey(linkParts[0]))
-			    		{
-			    			out.write(article + "\n");
-			    			break;
-			    		}
-			    	}
-			    	else if(linkParts.length == 2)
-			    	{
-			    		if(aliasGn.containsKey(linkParts[1]))
-			    		{
-			    			out.write(article + "\n");
-			    			break;
-			    		}
-			    	}
-			    	else{
-			    		System.err.format("parse error: line %d. Line info: %s.\n", cnt, article);
-			    	}
-			    }
+
+			while ((anchorEntry = br.readLine()) != null) {
+				String[] parts = anchorEntry.split("\t");
+				if (parts.length <= 1) {
+					continue;
+				}
+				String anchorText = parts[0];
+				if (aliasGn.containsKey(anchorText)
+						&& aliasGn.get(anchorText).size() > 0) {
+
+					Pattern pattern = Pattern.compile("\\[(.+?)\\]");
+					Matcher matcher = pattern.matcher(anchorEntry);
+					int cnt = 0;
+					StringBuffer ambiguousText = new StringBuffer();
+
+					while (matcher.find()) {
+						cnt++;
+					}
+					if (cnt > 1) {
+						out.write(anchorEntry + "\n");
+					}
+				}
 			}
- 
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
 			try {
-				if (br != null)br.close();
-				if (out != null)out.close();
+				if (br != null)
+					br.close();
+				if (out != null)
+					out.close();
 			} catch (IOException ex) {
 				ex.printStackTrace();
 			}
 		}
 	}
+
+
+	private static void filterCityMentionByLinkTarget(String filename,
+			HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output) {
+		BufferedReader br = null;
+		BufferedWriter out = null;
+
+		try {
+
+			String article;
+
+			br = new BufferedReader(new FileReader(filename));
+			out = new BufferedWriter(new FileWriter(output));
+			String fStr = "##;%s###%d#;#"; // format string..
+
+			while ((article = br.readLine()) != null) {
+				String[] parts = article.split("\t");
+				if (parts.length <= 1) {
+					continue;
+				}
+				String anchorText = parts[0];
+				if (aliasGn.containsKey(anchorText)
+						&& aliasGn.get(anchorText).size() > 0) {
+
+					Pattern pattern = Pattern.compile("\\[(.+?)\\]");
+					Matcher matcher = pattern.matcher(article);
+					int cnt = 0;
+					StringBuffer ambiguousText = new StringBuffer();
+
+					while (matcher.find()) {
+						cnt++;
+						String link = matcher.group(1);
+						String[] linkParts = link.split("\\|");
+						if (linkParts.length == 1 || linkParts.length == 2) {
+							ambiguousText.append(String.format(
+									"%s##,,##,,##%s\n", anchorText, ("["
+											+ linkParts[0] + "]")));
+						} else {
+							System.err.format(
+									"parse error: line %d. Line info: %s.\n",
+									cnt, article);
+						}
+					}
+					if (cnt > 1) {
+						out.write(ambiguousText.toString());
+					}
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+				if (out != null)
+					out.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
+	private static void filterCityMentionByArticle(String filename,
+			HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output) {
+		BufferedReader br = null;
+		BufferedWriter out = null;
+
+		try {
+
+			String article;
+
+			br = new BufferedReader(new FileReader(filename));
+			out = new BufferedWriter(new FileWriter(output));
+
+			while ((article = br.readLine()) != null) {
+				String[] parts = article.split("\t");
+				StringBuffer titleBuffer = new StringBuffer();
+				LinkedList<String> anchorTexts = new LinkedList<String>();
+				
+				if (parts.length <= 1) {
+					continue;
+				}
+
+				if (parts.length < 3) {
+					System.out.print("Unrecognized article: " + article);
+				} else {
+
+					Long id = Long.parseLong(parts[0]);
+					String title = parts[1];
+					Integer linkNum = Integer.parseInt(parts[2]);
+					String anchorText = "";
+
+					Pattern pattern = Pattern.compile("\\[(.+?)\\]");
+					Matcher matcher = pattern.matcher(article);
+					while (matcher.find()) {
+						String link = matcher.group(1);
+						String[] linkParts = link.split("\\|");
+						if (linkParts.length == 1) {
+
+							anchorText = linkParts[0];
+						} else if (linkParts.length == 2) {
+
+							anchorText = linkParts[1];
+						} else {
+							System.out.print("?? linkParts: "
+									+ linkParts.length + "  " + link);
+						}
+						if (!anchorTexts.contains(anchorText) && aliasGn.containsKey(anchorText)
+								&& aliasGn.get(anchorText).size() > 0) {
+							anchorTexts.add(anchorText);
+							titleBuffer.append(String.format(
+									"%s##,,##,,##%s\n", anchorText, ("["
+											+ title + "]") ));
+
+						}
+
+					}
+					out.write(titleBuffer.toString());
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+				if (out != null)
+					out.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+	
+	private static void getGoldStandard(String filename,
+			HashMap<String, LinkedList<SimpleGeoName>> aliasGn, String output) {
+		BufferedReader br = null;
+		BufferedWriter out = null;
+
+		try {
+
+			String article;
+
+			br = new BufferedReader(new FileReader(filename));
+			out = new BufferedWriter(new FileWriter(output));
+
+			while ((article = br.readLine()) != null) {
+				String[] parts = article.split("\t");
+				StringBuffer titleBuffer = new StringBuffer();
+				LinkedList<String> anchorTexts = new LinkedList<String>();
+				
+				if (parts.length <= 1) {
+					continue;
+				}
+
+				if (parts.length < 3) {
+					System.out.print("Unrecognized article: " + article);
+				} else {
+
+					Long id = Long.parseLong(parts[0]);
+					String title = parts[1];
+					Integer linkNum = Integer.parseInt(parts[2]);
+					String anchorText = "";
+					String linkTarget = "";
+
+					Pattern pattern = Pattern.compile("\\[(.+?)\\]");
+					Matcher matcher = pattern.matcher(article);
+					while (matcher.find()) {
+						String link = matcher.group(1);
+						String[] linkParts = link.split("\\|");
+						if (linkParts.length == 1) {
+
+							anchorText = linkParts[0];
+							linkTarget = linkParts[0];
+						} else if (linkParts.length == 2) {
+
+							anchorText = linkParts[1];
+							linkTarget = linkParts[0];
+						} else {
+							System.out.print("?? linkParts: "
+									+ linkParts.length + "  " + link);
+						}
+						if (!anchorTexts.contains(anchorText) && aliasGn.containsKey(anchorText)
+								&& aliasGn.get(anchorText).size() > 0) {
+							anchorTexts.add(anchorText);
+							titleBuffer.append(String.format(
+									"%s##,,##,,##%s##,,##,,##%s\n", anchorText, ("["
+											+ title + "]"), ("[" + linkTarget + "]") ));
+
+						}
+
+					}
+					out.write(titleBuffer.toString());
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+				if (out != null)
+					out.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
 
 	public static void main(String[] args) {
 		String input = args[0];
@@ -320,7 +528,10 @@ public class GetCityInfoFromTxt {
 		System.out.println(input + ", " + output);
 		HashMap<Integer, GeoName> idGn = getCityByIdMapping("input/cities1000.txt");
 		HashMap<String, LinkedList<SimpleGeoName>> aliasGn = getCityByAlternativeNameMapping("input/cities1000.txt");
-		filterCityMention(input, aliasGn, output);
+		//filterCityMentionByLinkTarget(input, aliasGn, output);
+		//filterCityMentionByArticle(input, aliasGn, output);
+		//filterCommonScoreH3(input, aliasGn, output);
+		getGoldStandard(input, aliasGn, output);
 	}
 
 }

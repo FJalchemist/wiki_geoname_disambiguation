@@ -1,3 +1,5 @@
 wikipedia-extraction/input/*
 wikipedia-extraction/output/*
 wikipedia-extraction/bin/*
+geoname-extraction/input/*
+geoname-extraction/output/*
