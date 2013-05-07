@@ -3,3 +3,5 @@ wikipedia-extraction/output/*
 wikipedia-extraction/bin/*
 geoname-extraction/input/*
 geoname-extraction/output/*
+wikipedia-extraction/input_mr/*
+wikipedia-extraction/output_mr/*

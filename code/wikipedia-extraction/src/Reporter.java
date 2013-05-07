@@ -22,8 +22,9 @@ public class Reporter {
 		String gold = args[0];
 		
 		String common = args[1];
-		CommonScoreScorer css = new CommonScoreScorer(common);
-		System.out.format("target probability: %f. \n", css.majority_prob);
+		IScorer css = new CommonScoreScorer(common);
+		//IScorer css = new NaiveScorer();
+		//System.out.format("target probability: %f. \n", css.majority_prob);
 		
 		BufferedReader br = null;
 		
@@ -55,6 +56,7 @@ public class Reporter {
 					//System.err.format("%s, %s, %s. \n", anchorText, title, golds);
 					
 					String res = css.disambiguate(anchorText, title);
+					//System.err.format("%s, %s. \n", res, golds);
 					if(res.equals(golds))
 					{
 						correct += 1;
